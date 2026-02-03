@@ -17,27 +17,31 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS: allow localhost frontend connections (Vite may use 3000–3004 if ports are in use)
+# CORS: localhost for dev + CORS_ORIGINS from env for production (e.g. Vercel URL)
+_local_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
+    "http://localhost:3003",
+    "http://127.0.0.1:3003",
+    "http://localhost:3004",
+    "http://127.0.0.1:3004",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+]
+_extra_origins = [o.strip() for o in (config.CORS_ORIGINS_EXTRA or "").split(",") if o.strip()]
+allow_origins = _local_origins + _extra_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:3002",
-        "http://127.0.0.1:3002",
-        "http://localhost:3003",
-        "http://127.0.0.1:3003",
-        "http://localhost:3004",
-        "http://127.0.0.1:3004",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost:4200",
-        "http://127.0.0.1:4200",
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
