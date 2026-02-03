@@ -29,6 +29,13 @@ curl http://127.0.0.1:8000/health
 
 Returns: `{"status":"ok"}`
 
+## Deploy: Render (backend)
+
+- **Start Command:** `python run.py` (uses `PORT` from env; default 8000).
+- **Entrypoint:** `app.main:app`.
+- Set **Environment Variables** in Render dashboard (e.g. `GRID_API_KEY`, `CORS_ORIGINS` for your frontend URL).
+- No hardcoded server URLs in the app; CORS is configured via `CORS_ORIGINS` for production.
+
 ## Deploy: Vercel (frontend) + AWS (backend)
 
 **Frontend (Vercel)**  
