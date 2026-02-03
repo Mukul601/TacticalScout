@@ -1,4 +1,4 @@
-import { Shield, Radio, Clock, Wifi } from "lucide-react";
+import { Crosshair, Radio, Clock, Wifi } from "lucide-react";
 
 export function DashboardHeader() {
   return (
@@ -8,14 +8,14 @@ export function DashboardHeader() {
           {/* Logo & Title */}
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded bg-primary/20 border border-primary/50 flex items-center justify-center glow-cyan">
-              <Shield className="w-5 h-5 text-primary" />
+              <Crosshair className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h1 className="font-orbitron text-xl font-bold tracking-wider text-foreground text-glow-cyan">
-                TACTICAL OPS
+                Tactical Scout
               </h1>
               <p className="text-xs text-muted-foreground font-mono">
-                Esports Intelligence Dashboard v2.4
+                AI Powered Esports Scouting & Draft Intelligence
               </p>
             </div>
           </div>

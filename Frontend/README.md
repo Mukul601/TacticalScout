@@ -1,4 +1,4 @@
-# Coach Command Center – Frontend
+# Tactical Scout – Frontend
 
 Next.js frontend with **axios** and **Tailwind CSS**.
 

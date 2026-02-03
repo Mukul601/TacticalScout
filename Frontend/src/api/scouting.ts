@@ -194,6 +194,8 @@ export function mapApiResponseToScoutingReport(
     counterStrategies,
     draftRisks: draftRisksTop,
     lastUpdated: new Date().toISOString(),
+    limitedDataMode: data.mock_data_used ?? false,
+    matchesAnalyzed,
   };
 }
 

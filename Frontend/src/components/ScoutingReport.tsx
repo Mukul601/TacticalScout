@@ -1,6 +1,7 @@
 import { TacticalCard } from "./TacticalCard";
-import { Eye, Activity, Shield, Sword, Clock, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
+import { Eye, Activity, Shield, Sword, Clock, TrendingUp, TrendingDown, Minus, Loader2, BarChart3 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { getScoutingConfidence } from "@/lib/insight";
 import { ScoutingReport as ScoutingReportType, PlayerStat, RecentMatch, TeamStrength } from "@/types/scouting";
 
 interface ScoutingReportProps {
@@ -52,6 +53,8 @@ export function ScoutingReport({ report, isLoading = false }: ScoutingReportProp
     );
   }
 
+  const confidence = getScoutingConfidence(report);
+
   return (
     <TacticalCard 
       title="Scouting Report" 
@@ -60,6 +63,28 @@ export function ScoutingReport({ report, isLoading = false }: ScoutingReportProp
       badge={report.teamName.toUpperCase()}
     >
       <div className="space-y-4">
+        {/* Confidence score */}
+        {confidence && (
+          <div className="flex items-center gap-2 py-2 px-3 rounded bg-secondary/30 border border-border">
+            <BarChart3 className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-xs text-muted-foreground">Insight confidence:</span>
+            <span
+              className={`font-mono font-semibold text-xs ${
+                confidence.label === "high"
+                  ? "text-success"
+                  : confidence.label === "medium"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground"
+              }`}
+            >
+              {confidence.score}%
+            </span>
+            <span className="text-xs text-muted-foreground">
+              ({confidence.matchesAnalyzed} match{confidence.matchesAnalyzed !== 1 ? "es" : ""} analyzed)
+            </span>
+          </div>
+        )}
+
         {/* Team Stats Overview */}
         <div className="grid grid-cols-3 gap-3 pb-4 border-b border-border">
           <div className="text-center">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Trophy } from "lucide-react";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { OpponentInputForm } from "@/components/OpponentInputForm";
 import { ScoutingReport } from "@/components/ScoutingReport";
@@ -7,6 +8,7 @@ import { DraftRiskPanel } from "@/components/DraftRiskPanel";
 import { AIChatBox } from "@/components/AIChatBox";
 import { fetchScoutingReport as fetchScoutingReportApi } from "@/api/scouting";
 import { analyzeDraft as analyzeDraftApi } from "@/api/draft";
+import { generateHowToWinInsight, getScoutingConfidence } from "@/lib/insight";
 import { ScoutingReport as ScoutingReportType } from "@/types/scouting";
 import type { DraftAnalysisResponse } from "@/api/draft";
 
@@ -60,6 +62,9 @@ const Index = () => {
     }
   }, []);
 
+  const howToWinInsight = generateHowToWinInsight(scoutingReport);
+  const scoutingConfidence = getScoutingConfidence(scoutingReport);
+
   // Compute dashboard stats from current report
   const dashboardStats = [
     { 
@@ -95,7 +100,63 @@ const Index = () => {
       <div className="relative z-10">
         <DashboardHeader />
 
+        {scoutingReport?.limitedDataMode && (
+          <div className="border-b border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400">
+            <div className="container mx-auto px-4 py-3 flex items-center justify-center gap-2 text-sm font-medium">
+              <span className="font-mono uppercase tracking-wider">Limited Data Mode</span>
+              <span className="text-muted-foreground font-normal">
+                — No GRID matches found; report uses sample data for this team.
+              </span>
+            </div>
+          </div>
+        )}
+
         <main className="container mx-auto px-4 py-6">
+          {/* How To Win vs Opponent - highlighted insight */}
+          {!isLoading && howToWinInsight && scoutingReport && (
+            <div className="mb-6 rounded-lg border-2 border-success/50 bg-gradient-to-br from-success/10 via-background to-primary/5 p-5 shadow-lg">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-success/20 border border-success/40">
+                  <Trophy className="h-6 w-6 text-success" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                    <h2 className="font-orbitron text-lg font-bold uppercase tracking-wider text-foreground">
+                      How To Win vs {scoutingReport.teamName}
+                    </h2>
+                    {scoutingConfidence && (
+                      <span
+                        className={`font-mono text-xs px-2 py-1 rounded border ${
+                          scoutingConfidence.label === "high"
+                            ? "bg-success/20 text-success border-success/40"
+                            : scoutingConfidence.label === "medium"
+                              ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40"
+                              : "bg-muted text-muted-foreground border-border"
+                        }`}
+                      >
+                        Confidence: {scoutingConfidence.score}% ({scoutingConfidence.matchesAnalyzed} match{scoutingConfidence.matchesAnalyzed !== 1 ? "es" : ""})
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {howToWinInsight.summary}
+                  </p>
+                  <ul className="space-y-2">
+                    {howToWinInsight.bullets.map((bullet, i) => (
+                      <li
+                        key={i}
+                        className="flex gap-2 text-sm text-foreground"
+                      >
+                        <span className="text-success font-bold shrink-0">•</span>
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Stats Bar */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             {dashboardStats.map((stat) => (
@@ -154,7 +215,7 @@ const Index = () => {
         <footer className="border-t border-border py-4 mt-8">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-mono">TACTICAL OPS © 2024</span>
+              <span className="font-mono">Tactical Scout © 2024</span>
               <span className="font-mono">Data updated: {scoutingReport?.lastUpdated ? new Date(scoutingReport.lastUpdated).toLocaleString() : 'N/A'}</span>
             </div>
           </div>

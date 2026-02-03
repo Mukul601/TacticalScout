@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Coach Command Center",
-  description: "Backend API for Coach Command Center",
+  title: "Tactical Scout",
+  description: "AI Powered Esports Scouting & Draft Intelligence",
 };
 
 export default function RootLayout({

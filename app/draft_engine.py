@@ -10,49 +10,73 @@ champion picks and returns:
     - Role coverage validation
     - Risk alerts
 
-`draft_list` is intentionally flexible:
-    - A list of strings: ["Ahri", "Amumu", ...]
-    - Or a list of dicts, each with optional fields:
-        {
-            "champion": "Ahri",
-            "role": "mid",
-            "damage_type": "magic",   # "physical" | "magic" | "mixed" | "true"
-            "tags": ["assassin", "pick"]
-        }
-
-Heuristics can be extended by adding to the CHAMPION_METADATA map below.
+Champion metadata includes:
+    - Role mapping (default_role)
+    - Damage type mapping (physical | magic | mixed | true)
+    - Synergy tags (engage, teamfight, pick, aoe, scaling, etc.)
+    - Frontline / carry tagging (tank, frontline, hyper_carry, carry, dps)
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List
 
 
-# --- Champion metadata (minimal, extendable) ---------------------------------
+# --- Champion metadata: role, damage type, synergy tags, frontline/carry ------
 
 @dataclass(frozen=True)
 class ChampionMeta:
     default_role: str | None
     damage_type: str | None  # "physical" | "magic" | "mixed" | "true"
-    tags: List[str]
+    tags: List[str]  # synergy + frontline/carry: tank, frontline, carry, hyper_carry, dps, engage, teamfight, pick, aoe, scaling, poke
 
 
-CHAMPION_METADATA: Dict[str, ChampionMeta] = {
-    # Examples; extend with your title-specific data as needed
-    "ahri": ChampionMeta(default_role="mid", damage_type="magic", tags=["pick", "burst", "mobility"]),
-    "zed": ChampionMeta(default_role="mid", damage_type="physical", tags=["pick", "assassin", "burst"]),
-    "amumu": ChampionMeta(default_role="jungle", damage_type="magic", tags=["teamfight", "engage", "tank", "aoe"]),
-    "orianna": ChampionMeta(default_role="mid", damage_type="magic", tags=["teamfight", "control", "aoe"]),
-    "kayle": ChampionMeta(default_role="top", damage_type="mixed", tags=["scaling", "dps"]),
-    "nasus": ChampionMeta(default_role="top", damage_type="physical", tags=["scaling", "split_push", "bruiser"]),
-    "vayne": ChampionMeta(default_role="adc", damage_type="physical", tags=["scaling", "hyper_carry"]),
-    "thresh": ChampionMeta(default_role="support", damage_type="magic", tags=["engage", "pick", "utility"]),
-    "pyke": ChampionMeta(default_role="support", damage_type="physical", tags=["pick", "burst", "snowball"]),
-}
+def _load_champion_metadata() -> Dict[str, ChampionMeta]:
+    """Load champion metadata from app/data/champions.json. Falls back to minimal dict on error."""
+    try:
+        path = Path(__file__).resolve().parent / "data" / "champions.json"
+        if not path.exists():
+            return _fallback_champion_metadata()
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        champions = data.get("champions", data) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+        result: Dict[str, ChampionMeta] = {}
+        for entry in champions:
+            if not isinstance(entry, dict):
+                continue
+            name = (entry.get("name") or "").strip()
+            if not name:
+                continue
+            key = name.lower()
+            role = (entry.get("role") or "").strip().lower() or None
+            damage_type = (entry.get("damage_type") or "").strip().lower() or None
+            tags_raw = entry.get("tags")
+            tags = [str(t).strip().lower() for t in (tags_raw if isinstance(tags_raw, list) else []) if t]
+            result[key] = ChampionMeta(default_role=role, damage_type=damage_type, tags=tags)
+        return result if result else _fallback_champion_metadata()
+    except Exception:
+        return _fallback_champion_metadata()
 
+
+def _fallback_champion_metadata() -> Dict[str, ChampionMeta]:
+    """Minimal metadata when JSON is missing or invalid."""
+    return {
+        "ahri": ChampionMeta("mid", "magic", ["pick", "burst", "mobility"]),
+        "amumu": ChampionMeta("jungle", "magic", ["tank", "frontline", "engage", "teamfight"]),
+        "vayne": ChampionMeta("adc", "physical", ["hyper_carry", "scaling", "dps"]),
+        "thresh": ChampionMeta("support", "magic", ["frontline", "engage", "pick", "utility"]),
+    }
+
+
+CHAMPION_METADATA: Dict[str, ChampionMeta] = _load_champion_metadata()
 
 REQUIRED_ROLES = ["top", "jungle", "mid", "adc", "support"]
+
+# Default role by pick order when champion is unknown (1–5)
+DEFAULT_ROLE_BY_INDEX = ["top", "jungle", "mid", "adc", "support"]
 
 
 def _normalize_pick(pick: Any) -> Dict[str, Any]:
@@ -94,34 +118,66 @@ def _normalize_pick(pick: Any) -> Dict[str, Any]:
     }
 
 
-def _synergy_score(picks: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Compute a simple synergy score based on shared tags and complementary roles."""
+def _apply_fallback_for_unknowns(picks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Fill role, damage_type, and tags for picks that have none (unknown champions).
+    Ensures non-zero synergy, role coverage, and damage composition scores.
+    """
+    result: List[Dict[str, Any]] = []
+    for i, p in enumerate(picks):
+        out = dict(p)
+        role = (out.get("role") or "").strip()
+        dmg_type = (out.get("damage_type") or "").strip()
+        tags = list(out.get("tags") or [])
+
+        idx = i % len(DEFAULT_ROLE_BY_INDEX)
+        if not role:
+            out["role"] = DEFAULT_ROLE_BY_INDEX[idx]
+            role = out["role"]
+        if not dmg_type:
+            out["damage_type"] = "mixed"
+            dmg_type = "mixed"
+        if not tags:
+            if role in ("top", "jungle"):
+                out["tags"] = ["frontline", "engage"]
+            else:
+                out["tags"] = ["carry", "dps"]
+        result.append(out)
+    return result
+
+
+def _synergy_score(picks: List[Dict[str, Any]], roles: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Compute synergy score from shared tags, frontline/carry balance, and role coverage."""
     if not picks:
         return {"score": 0.0, "classification": "unknown", "details": {}}
 
-    # Count tags across the draft
     tag_counts: Dict[str, int] = {}
     for p in picks:
         for t in p.get("tags") or []:
             tag_counts[t] = tag_counts.get(t, 0) + 1
 
-    # Synergy heuristics:
-    #   - shared engage / teamfight / pick tags increase synergy
-    #   - having at least one frontline/tank and at least one carry adds
-    shared_tags = ["engage", "teamfight", "pick", "aoe", "scaling"]
-    core_tags = ["tank", "frontline", "hyper_carry", "carry"]
+    # Base score for having a full comp (5 roles) – ensures non-zero when draft is filled
+    role_score = 0.0
+    if roles and roles.get("status") == "complete":
+        role_score = 25.0
+    elif roles and not roles.get("missing_roles"):
+        role_score = 15.0
 
+    # Frontline + carry balance (core comp synergy)
+    has_frontline = any(t in p.get("tags", []) for p in picks for t in ("tank", "frontline"))
+    has_carry = any(t in p.get("tags", []) for p in picks for t in ("hyper_carry", "carry", "dps"))
+    core_score = 25.0 if (has_frontline and has_carry) else (10.0 if (has_frontline or has_carry) else 0.0)
+
+    # Shared synergy tags (engage, teamfight, pick, aoe, scaling)
+    shared_tags = ["engage", "teamfight", "pick", "aoe", "scaling"]
     shared_score = 0.0
     for t in shared_tags:
         c = tag_counts.get(t, 0)
         if c >= 2:
-            shared_score += min(20.0, 5.0 * (c - 1))
+            shared_score += min(15.0, 4.0 * (c - 1))
+        elif c == 1:
+            shared_score += 2.0
 
-    has_frontline = any(t in p.get("tags", []) for p in picks for t in ("tank", "frontline"))
-    has_carry = any(t in p.get("tags", []) for p in picks for t in ("hyper_carry", "carry", "dps"))
-    core_score = 10.0 if has_frontline and has_carry else 0.0
-
-    raw_score = min(100.0, shared_score + core_score)
+    raw_score = min(100.0, role_score + core_score + shared_score)
     if raw_score >= 70:
         label = "high"
     elif raw_score >= 40:
@@ -282,11 +338,12 @@ def evaluate_draft(draft_list: List[Any]) -> Dict[str, Any]:
           "picks": [normalized_picks...],
         }
     """
-    picks = [_normalize_pick(p) for p in draft_list or []]
+    raw_picks = [_normalize_pick(p) for p in draft_list or []]
+    picks = _apply_fallback_for_unknowns(raw_picks)
 
-    synergy = _synergy_score(picks)
-    damage = _damage_balance(picks)
     roles = _role_coverage(picks)
+    synergy = _synergy_score(picks, roles)
+    damage = _damage_balance(picks)
     alerts = _risk_alerts(picks, synergy, damage, roles)
 
     return {

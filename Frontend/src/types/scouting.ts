@@ -48,4 +48,8 @@ export interface ScoutingReport {
   counterStrategies: CounterStrategy[];
   draftRisks: DraftRisk[];
   lastUpdated: string;
+  /** True when GRID returned zero matches and backend used mock dataset fallback. */
+  limitedDataMode?: boolean;
+  /** Number of matches analyzed for this report (used for confidence score). */
+  matchesAnalyzed?: number;
 }
