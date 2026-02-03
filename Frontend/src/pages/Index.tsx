@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Trophy } from "lucide-react";
+import { Trophy, ChevronDown } from "lucide-react";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { OpponentInputForm } from "@/components/OpponentInputForm";
 import { ScoutingReport } from "@/components/ScoutingReport";
 import { CounterStrategyPanel } from "@/components/CounterStrategyPanel";
@@ -112,49 +118,79 @@ const Index = () => {
         )}
 
         <main className="container mx-auto px-4 py-6">
-          {/* How To Win vs Opponent - highlighted insight */}
+          {/* How To Win vs Opponent - collapsible accordion */}
           {!isLoading && howToWinInsight && scoutingReport && (
-            <div className="mb-6 rounded-lg border-2 border-success/50 bg-gradient-to-br from-success/10 via-background to-primary/5 p-5 shadow-lg">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-success/20 border border-success/40">
-                  <Trophy className="h-6 w-6 text-success" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <h2 className="font-orbitron text-lg font-bold uppercase tracking-wider text-foreground">
-                      How To Win vs {scoutingReport.teamName}
-                    </h2>
-                    {scoutingConfidence && (
-                      <span
-                        className={`font-mono text-xs px-2 py-1 rounded border ${
-                          scoutingConfidence.label === "high"
-                            ? "bg-success/20 text-success border-success/40"
-                            : scoutingConfidence.label === "medium"
-                              ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40"
-                              : "bg-muted text-muted-foreground border-border"
-                        }`}
-                      >
-                        Confidence: {scoutingConfidence.score}% ({scoutingConfidence.matchesAnalyzed} match{scoutingConfidence.matchesAnalyzed !== 1 ? "es" : ""})
-                      </span>
-                    )}
+            <Accordion
+              type="single"
+              collapsible
+              defaultValue=""
+              className="mb-6 rounded-lg border-2 border-success/50 bg-gradient-to-br from-success/10 via-background to-primary/5 shadow-lg overflow-hidden"
+            >
+              <AccordionItem value="how-to-win" className="border-none">
+                <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-success/5 [&[data-state=open]>svg]:rotate-180">
+                  <div className="flex items-start gap-4 text-left w-full">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-success/20 border border-success/40">
+                      <Trophy className="h-6 w-6 text-success" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                        <h2 className="font-orbitron text-lg font-bold uppercase tracking-wider text-foreground">
+                          How To Win vs {scoutingReport.teamName}
+                        </h2>
+                        {scoutingConfidence && (
+                          <span
+                            className={`font-mono text-xs px-2 py-1 rounded border ${
+                              scoutingConfidence.label === "high"
+                                ? "bg-success/20 text-success border-success/40"
+                                : scoutingConfidence.label === "medium"
+                                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40"
+                                  : "bg-muted text-muted-foreground border-border"
+                            }`}
+                          >
+                            Confidence: {scoutingConfidence.score}% ({scoutingConfidence.matchesAnalyzed} match{scoutingConfidence.matchesAnalyzed !== 1 ? "es" : ""})
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {howToWinInsight.summary}
+                      </p>
+                      <ul className="space-y-1">
+                        {howToWinInsight.bullets.slice(0, 2).map((bullet, i) => (
+                          <li key={i} className="flex gap-2 text-sm text-foreground">
+                            <span className="text-success font-bold shrink-0">•</span>
+                            <span className="line-clamp-2">{bullet}</span>
+                          </li>
+                        ))}
+                        {howToWinInsight.bullets.length > 2 && (
+                          <li className="text-xs text-muted-foreground font-mono">
+                            +{howToWinInsight.bullets.length - 2} more — expand for full breakdown
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                    <ChevronDown className="h-5 w-5 shrink-0 text-success transition-transform duration-200 ml-2" />
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {howToWinInsight.summary}
-                  </p>
-                  <ul className="space-y-2">
-                    {howToWinInsight.bullets.map((bullet, i) => (
-                      <li
-                        key={i}
-                        className="flex gap-2 text-sm text-foreground"
-                      >
-                        <span className="text-success font-bold shrink-0">•</span>
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
+                </AccordionTrigger>
+                <AccordionContent className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                  <div className="px-5 pb-5 pt-0 border-t border-success/20">
+                    <p className="text-sm text-muted-foreground mb-3 mt-2">
+                      {howToWinInsight.summary}
+                    </p>
+                    <p className="text-xs font-mono uppercase tracking-wider text-success mb-2">
+                      Full tactical breakdown
+                    </p>
+                    <ul className="space-y-2">
+                      {howToWinInsight.bullets.map((bullet, i) => (
+                        <li key={i} className="flex gap-2 text-sm text-foreground">
+                          <span className="text-success font-bold shrink-0">•</span>
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           )}
 
           {/* Stats Bar */}

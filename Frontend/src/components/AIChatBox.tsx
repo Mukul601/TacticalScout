@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { TacticalCard } from "./TacticalCard";
-import { Bot, Send, User, Sparkles, Loader2 } from "lucide-react";
+import { Bot, Send, User, Sparkles, Loader2, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { sendCoachChat } from "@/api/chat";
+import { matchIntent, getPredefinedResponse } from "@/lib/intentResponses";
 import type { ScoutingReport } from "@/types/scouting";
 
 interface Message {
@@ -12,6 +13,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  /** True when response came from predefined intent mapping (not AI API). */
+  isFastInsight?: boolean;
 }
 
 interface AIChatBoxProps {
@@ -51,8 +54,22 @@ export function AIChatBox({ scoutingReport = null }: AIChatBoxProps) {
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
-    setIsTyping(true);
 
+    const intent = matchIntent(text);
+    if (intent !== null) {
+      const content = getPredefinedResponse(intent, scoutingReport ?? null);
+      const aiMessage: Message = {
+        id: nextIdRef.current++,
+        role: "assistant",
+        content,
+        timestamp: new Date(),
+        isFastInsight: true
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      return;
+    }
+
+    setIsTyping(true);
     try {
       const result = await sendCoachChat(text, scoutingReport ?? null);
       const content = result.error
@@ -62,7 +79,8 @@ export function AIChatBox({ scoutingReport = null }: AIChatBoxProps) {
         id: nextIdRef.current++,
         role: "assistant",
         content,
-        timestamp: new Date()
+        timestamp: new Date(),
+        isFastInsight: false
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (err: unknown) {
@@ -74,7 +92,8 @@ export function AIChatBox({ scoutingReport = null }: AIChatBoxProps) {
         id: nextIdRef.current++,
         role: "assistant",
         content: `Error: ${message}`,
-        timestamp: new Date()
+        timestamp: new Date(),
+        isFastInsight: false
       };
       setMessages(prev => [...prev, aiMessage]);
     } finally {
@@ -92,7 +111,9 @@ export function AIChatBox({ scoutingReport = null }: AIChatBoxProps) {
   const quickPrompts = [
     "Best ban strategy?",
     "Counter their comp",
-    "Win conditions?"
+    "Win conditions?",
+    "Early game plan",
+    "Weak player targeting"
   ];
 
   return (
@@ -126,7 +147,13 @@ export function AIChatBox({ scoutingReport = null }: AIChatBoxProps) {
                     : "bg-primary/20 border border-primary/30"
                   }`}
                 >
-                  <p className="text-sm text-foreground leading-relaxed">{message.content}</p>
+                  {message.role === "assistant" && message.isFastInsight && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-success mb-2 px-1.5 py-0.5 rounded bg-success/20 border border-success/30">
+                      <Zap className="w-3 h-3" />
+                      Fast Insight
+                    </span>
+                  )}
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{message.content}</p>
                   <p className="text-[10px] text-muted-foreground mt-1 font-mono">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>

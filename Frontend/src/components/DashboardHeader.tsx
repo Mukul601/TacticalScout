@@ -1,4 +1,4 @@
-import { Crosshair, Radio, Clock, Wifi } from "lucide-react";
+import { Crosshair, Radio, Clock, Wifi, Gamepad2 } from "lucide-react";
 
 export function DashboardHeader() {
   return (
@@ -16,6 +16,10 @@ export function DashboardHeader() {
               </h1>
               <p className="text-xs text-muted-foreground font-mono">
                 AI Powered Esports Scouting & Draft Intelligence
+              </p>
+              <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
+                <Gamepad2 className="w-3.5 h-3.5 text-primary/80 shrink-0" />
+                <span>Game Supported: League of Legends (GRID Data Enabled)</span>
               </p>
             </div>
           </div>
