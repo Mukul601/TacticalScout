@@ -1,0 +1,13 @@
+# Environment and secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Frontend
+Frontend/node_modules/
+Frontend/dist/
