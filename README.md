@@ -40,7 +40,7 @@ Returns: `{"status":"ok"}`
 
 **Frontend (Vercel)**  
 - In Vercel, set **Root Directory** to `Frontend`.  
-- Add env var: `VITE_API_URL` = your backend URL (e.g. `https://your-api.execute-api.region.amazonaws.com` or your EC2/Elastic Beanstalk URL).  
+- Add env var: `VITE_API_BASE_URL` = your backend URL (e.g. `https://your-api.execute-api.region.amazonaws.com` or your EC2/Elastic Beanstalk URL).  
 - Build uses Vite; SPA rewrites are in `Frontend/vercel.json`.
 
 **Backend (AWS)**  
